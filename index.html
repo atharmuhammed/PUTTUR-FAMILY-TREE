@@ -7,7 +7,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <style>
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    body { margin: 0; background-color: #f4f7f6; color: #333; }
+    body { margin: 0; background-color: #f4f7f6; color: #333; min-height: 100vh; position: relative; padding-bottom: 60px; }
 
     /* Password Screen */
     #password-overlay {
@@ -50,11 +50,23 @@
       padding: 25px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       text-align: center;
     }
-    .parent-card h2 { margin: 0 0 10px 0; font-size: 28px; border-bottom: 1px solid rgba(255,255,255,0.3); padding-bottom: 8px; }
+    .parent-card h2 { margin: 10px 0; font-size: 28px; border-bottom: 1px solid rgba(255,255,255,0.3); padding-bottom: 8px; }
     .parent-details { font-size: 16px; line-height: 1.6; }
     .spouse-badge {
       display: inline-block; background: #2d5b84; padding: 6px 14px;
       border-radius: 15px; margin-top: 10px; font-weight: bold; font-size: 15px;
+    }
+
+    /* Photos */
+    .profile-photo {
+      width: 90px; height: 90px; border-radius: 50%;
+      object-fit: cover; border: 3px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2); margin-bottom: 8px;
+    }
+    .child-photo {
+      width: 65px; height: 65px; border-radius: 50%;
+      object-fit: cover; border: 2px solid #1f4e78;
+      margin-bottom: 6px;
     }
 
     /* Children Cards Grid */
@@ -76,6 +88,23 @@
     .child-name { font-weight: bold; color: #1f4e78; font-size: 16px; }
     .child-sub { font-size: 13px; color: #666; margin-top: 4px; }
     .no-children { color: #777; font-style: italic; text-align: center; padding: 20px; grid-column: 1 / -1; }
+
+    /* Bottom-Right Copyright Notice */
+    .copyright-footer {
+      position: fixed;
+      bottom: 12px;
+      right: 18px;
+      font-size: 12px;
+      color: #666666;
+      background: rgba(255, 255, 255, 0.85);
+      padding: 4px 10px;
+      border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(4px);
+      user-select: none;
+      z-index: 100;
+      font-weight: 500;
+    }
   </style>
 </head>
 <body>
@@ -104,6 +133,11 @@
     <div id="parent-container"></div>
     <div class="section-header" id="children-title">Children</div>
     <div id="children-container" class="children-grid"></div>
+  </div>
+
+  <!-- Copyright Footer Tag -->
+  <div class="copyright-footer">
+    © 2026 Athar Muhammed. All rights reserved.
   </div>
 
   <script>
@@ -224,6 +258,11 @@
       const partner = getVal(currentPerson, ["PARTNER NAME", "PARTNER NAME ", "PARTNER", "SPOUSE"]);
       const dob2 = formatDate(getVal(currentPerson, ["DOB2", "DOB.1", "DOB_1"]));
       const dod2 = formatDate(getVal(currentPerson, ["DOD2", "DOD.1", "DOD_1"]));
+      const imgUrl = getVal(currentPerson, ["IMAGE", "PHOTO", "IMG"]);
+      const level = getVal(currentPerson, ["LEVEL"]);
+
+      // Image only permitted for Generation 1 and 2
+      const isGen1Or2 = level === "1" || level === "1.0" || level === "2" || level === "2.0";
 
       let partnerDetails = [];
       if (dob2) partnerDetails.push(`DOB: ${dob2}`);
@@ -232,6 +271,7 @@
 
       document.getElementById("parent-container").innerHTML = `
         <div class="parent-card">
+          ${(isGen1Or2 && imgUrl) ? `<img src="${imgUrl}" class="profile-photo" alt="${name}">` : ''}
           <h2>${name}</h2>
           <div class="parent-details">
             ${dob1 ? `<div><strong>DOB:</strong> ${dob1}</div>` : ''}
@@ -258,6 +298,10 @@
         const childPartner = getVal(child, ["PARTNER NAME", "PARTNER NAME ", "PARTNER", "SPOUSE"]);
         const childPartnerDob = formatDate(getVal(child, ["DOB2", "DOB.1", "DOB_1"]));
         const childPartnerDod = formatDate(getVal(child, ["DOD2", "DOD.1", "DOD_1"]));
+        const childImg = getVal(child, ["IMAGE", "PHOTO", "IMG"]);
+        const childLevel = getVal(child, ["LEVEL"]);
+        const isChildGen1Or2 = childLevel === "1" || childLevel === "1.0" || childLevel === "2" || childLevel === "2.0";
+
         const grandChildren = getChildrenOf(childName);
 
         let cPartnerDetails = [];
@@ -267,6 +311,7 @@
 
         childrenHTML += `
           <div class="child-card" onclick='handleChildClick("${childName.replace(/'/g, "\\'")}")'>
+            ${(isChildGen1Or2 && childImg) ? `<img src="${childImg}" class="child-photo" alt="${childName}">` : ''}
             <div class="child-name">${childName}</div>
             ${childDob ? `<div class="child-sub"><strong>DOB:</strong> ${childDob}</div>` : ''}
             ${childDod ? `<div class="child-sub"><strong>DOD:</strong> ${childDod}</div>` : ''}
