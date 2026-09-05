@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Family Tree</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  <!-- Library to read Excel (.xlsx) files directly -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { margin: 0; background-color: #f4f7f6; color: #333; }
@@ -98,15 +99,18 @@
   </div>
 
   <script>
-    // EDIT YOUR WEBSITE PASSWORD HERE (Replace "familysecret" with your own password)
+    // EDIT YOUR WEBSITE PASSWORD HERE
     const SET_PASSWORD = "Puttur2026";
+
+    // EXCEL FILE NAME
+    const EXCEL_FILENAME = "ABDUL KHADER FAMILY.xlsx";
 
     function checkPassword() {
       const input = document.getElementById("password-input").value;
       if (input === SET_PASSWORD) {
         document.getElementById("password-overlay").style.display = "none";
         document.getElementById("app").style.display = "block";
-        autoLoadCSV();
+        autoLoadExcel();
       } else {
         document.getElementById("error-msg").style.display = "block";
       }
@@ -118,21 +122,28 @@
 
     let familyData = [];
 
-    function autoLoadCSV() {
-      Papa.parse("family.csv", {
-        download: true,
-        header: true,
-        skipEmptyLines: true,
-        complete: function(results) {
-          familyData = results.data;
+    function autoLoadExcel() {
+      fetch(encodeURIComponent(EXCEL_FILENAME))
+        .then(res => res.arrayBuffer())
+        .then(buffer => {
+          const workbook = XLSX.read(buffer, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          familyData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
           renderTree();
-        }
-      });
+        })
+        .catch(err => {
+          console.error("Error reading Excel file:", err);
+          alert("Could not load " + EXCEL_FILENAME + ". Make sure the filename matches exactly.");
+        });
     }
 
     function formatDate(val) {
       if (!val) return "";
       let str = val.toString().trim();
+      if (str.includes("T")) {
+        str = str.split("T")[0];
+      }
       if (str.includes("00:00:00")) {
         str = str.replace(" 00:00:00", "");
       }
@@ -145,7 +156,7 @@
 
       const levels = {};
       familyData.forEach(person => {
-        const name = person["NAME"] ? person["NAME"].trim() : "";
+        const name = person["NAME"] ? person["NAME"].toString().trim() : "";
         if (!name) return;
 
         const lvl = person["LEVEL"] ? person["LEVEL"].toString().trim() : "Other";
@@ -153,7 +164,7 @@
         levels[lvl].push(person);
       });
 
-      Object.keys(levels).sort().forEach(lvl => {
+      Object.keys(levels).sort((a,b) => parseFloat(a) - parseFloat(b)).forEach(lvl => {
         const section = document.createElement("div");
         section.className = "level-section";
 
@@ -168,7 +179,7 @@
         levels[lvl].forEach(person => {
           const card = document.createElement("div");
           card.className = "person-card";
-          card.innerText = person["NAME"].trim();
+          card.innerText = person["NAME"].toString().trim();
           card.onclick = () => showDetails(person);
           container.appendChild(card);
         });
@@ -179,15 +190,15 @@
     }
 
     function showDetails(person) {
-      const name = person["NAME"] ? person["NAME"].trim() : "";
+      const name = person["NAME"] ? person["NAME"].toString().trim() : "";
       const dob1 = formatDate(person["DOB 1"]);
       const dod1 = formatDate(person["DOD 1"]);
 
-      const partner = person["PARTNER NAME"] ? person["PARTNER NAME"].trim() : "";
+      const partner = person["PARTNER NAME"] ? person["PARTNER NAME"].toString().trim() : "";
       const dob2 = formatDate(person["DOB 2"]);
       const dod2 = formatDate(person["DOD 2"]);
 
-      const parent = person["PARENT NAME"] ? person["PARENT NAME"].trim() : "";
+      const parent = person["PARENT NAME"] ? person["PARENT NAME"].toString().trim() : "";
 
       document.getElementById("detail-name").innerText = name;
 
@@ -210,8 +221,8 @@
         ? `<div class="detail-row"><span class="detail-label">Parent Name:</span> ${parent}</div>` : "";
 
       const children = familyData
-        .filter(item => item["PARENT NAME"] && item["PARENT NAME"].trim().toUpperCase() === name.toUpperCase())
-        .map(item => item["NAME"].trim());
+        .filter(item => item["PARENT NAME"] && item["PARENT NAME"].toString().trim().toUpperCase() === name.toUpperCase())
+        .map(item => item["NAME"].toString().trim());
 
       document.getElementById("detail-children").innerHTML = (children.length > 0) 
         ? `<div class="detail-row"><span class="detail-label">Children:</span> ${children.join(", ")}</div>` : "";
