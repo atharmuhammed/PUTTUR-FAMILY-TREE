@@ -133,15 +133,14 @@
 
     function getVal(row, possibleKeys) {
       if (!row) return "";
-      for (let key of Object.keys(row)) {
-        let cleanKey = key.trim().toUpperCase();
-        for (let target of possibleKeys) {
-          if (cleanKey === target.toUpperCase()) {
-            let val = row[key];
-            if (val !== undefined && val !== null) {
-              val = val.toString().trim();
-              if (val !== "NaN" && val !== "undefined" && val !== "" && val !== "NaT") return val;
-            }
+      const rowKeys = Object.keys(row);
+      for (let target of possibleKeys) {
+        let matchedKey = rowKeys.find(k => k.trim().toUpperCase() === target.toUpperCase());
+        if (matchedKey) {
+          let val = row[matchedKey];
+          if (val !== undefined && val !== null) {
+            val = val.toString().trim();
+            if (val !== "" && val !== "NaN" && val !== "undefined" && val !== "NaT") return val;
           }
         }
       }
@@ -223,8 +222,8 @@
       const dob1 = formatDate(getVal(currentPerson, ["DOB"]));
       const dod1 = formatDate(getVal(currentPerson, ["DOD"]));
       const partner = getVal(currentPerson, ["PARTNER NAME", "PARTNER NAME ", "PARTNER", "SPOUSE"]);
-      const dob2 = formatDate(getVal(currentPerson, ["DOB.1", "DOB 2"]));
-      const dod2 = formatDate(getVal(currentPerson, ["DOD.1", "DOD 2"]));
+      const dob2 = formatDate(getVal(currentPerson, ["DOB.1", "DOB 2", "PARTNER DOB", "SPOUSE DOB"]));
+      const dod2 = formatDate(getVal(currentPerson, ["DOD.1", "DOD 2", "PARTNER DOD", "SPOUSE DOD"]));
 
       let partnerDetails = [];
       if (dob2) partnerDetails.push(`DOB: ${dob2}`);
@@ -257,14 +256,21 @@
         const childDob = formatDate(getVal(child, ["DOB"]));
         const childDod = formatDate(getVal(child, ["DOD"]));
         const childPartner = getVal(child, ["PARTNER NAME", "PARTNER NAME ", "PARTNER", "SPOUSE"]);
+        const childPartnerDob = formatDate(getVal(child, ["DOB.1", "DOB 2", "PARTNER DOB", "SPOUSE DOB"]));
+        const childPartnerDod = formatDate(getVal(child, ["DOD.1", "DOD 2", "PARTNER DOD", "SPOUSE DOD"]));
         const grandChildren = getChildrenOf(childName);
+
+        let cPartnerDetails = [];
+        if (childPartnerDob) cPartnerDetails.push(`DOB: ${childPartnerDob}`);
+        if (childPartnerDod) cPartnerDetails.push(`DOD: ${childPartnerDod}`);
+        let cPartnerStr = cPartnerDetails.length > 0 ? ` (${cPartnerDetails.join(' | ')})` : '';
 
         childrenHTML += `
           <div class="child-card" onclick='handleChildClick("${childName.replace(/'/g, "\\'")}")'>
             <div class="child-name">${childName}</div>
             ${childDob ? `<div class="child-sub"><strong>DOB:</strong> ${childDob}</div>` : ''}
             ${childDod ? `<div class="child-sub"><strong>DOD:</strong> ${childDod}</div>` : ''}
-            ${childPartner ? `<div class="child-sub">Spouse: ${childPartner}</div>` : ''}
+            ${childPartner ? `<div class="child-sub">Spouse: ${childPartner}${cPartnerStr}</div>` : ''}
             <div class="child-sub" style="color: #1f4e78; font-weight: 600; margin-top:8px;">
               ${grandChildren.length > 0 ? `${grandChildren.length} Children ➡️` : 'View Details ➡️'}
             </div>
