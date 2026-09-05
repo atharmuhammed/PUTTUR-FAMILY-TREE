@@ -54,7 +54,7 @@
     .parent-details { font-size: 16px; line-height: 1.6; }
     .spouse-badge {
       display: inline-block; background: #2d5b84; padding: 6px 14px;
-      border-radius: 15px; margin-top: 10px; font-weight: bold; font-size: 16px;
+      border-radius: 15px; margin-top: 10px; font-weight: bold; font-size: 15px;
     }
 
     /* Children Cards Grid */
@@ -63,7 +63,7 @@
       border-bottom: 2px solid #eef2f5; padding-bottom: 5px;
     }
     .children-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px;
     }
     .child-card {
       background: white; border: 2px solid #1f4e78; border-radius: 8px;
@@ -74,7 +74,7 @@
       background: #eef5fc; transform: translateY(-3px); box-shadow: 0 5px 12px rgba(0,0,0,0.1);
     }
     .child-name { font-weight: bold; color: #1f4e78; font-size: 16px; }
-    .child-sub { font-size: 13px; color: #666; margin-top: 5px; }
+    .child-sub { font-size: 13px; color: #666; margin-top: 4px; }
     .no-children { color: #777; font-style: italic; text-align: center; padding: 20px; grid-column: 1 / -1; }
   </style>
 </head>
@@ -140,7 +140,7 @@
             let val = row[key];
             if (val !== undefined && val !== null) {
               val = val.toString().trim();
-              if (val !== "NaN" && val !== "undefined" && val !== "") return val;
+              if (val !== "NaN" && val !== "undefined" && val !== "" && val !== "NaT") return val;
             }
           }
         }
@@ -151,7 +151,9 @@
     function formatDate(val) {
       if (!val) return "";
       if (val.includes("T")) val = val.split("T")[0];
-      return val.replace(" 00:00:00", "");
+      val = val.replace(" 00:00:00", "").trim();
+      if (val === "NaT" || val === "NaN" || val === "undefined") return "";
+      return val;
     }
 
     function normName(str) {
@@ -224,13 +226,18 @@
       const dob2 = formatDate(getVal(currentPerson, ["DOB.1", "DOB 2"]));
       const dod2 = formatDate(getVal(currentPerson, ["DOD.1", "DOD 2"]));
 
+      let partnerDetails = [];
+      if (dob2) partnerDetails.push(`DOB: ${dob2}`);
+      if (dod2) partnerDetails.push(`DOD: ${dod2}`);
+      let partnerStr = partnerDetails.length > 0 ? ` (${partnerDetails.join(' | ')})` : '';
+
       document.getElementById("parent-container").innerHTML = `
         <div class="parent-card">
           <h2>${name}</h2>
           <div class="parent-details">
             ${dob1 ? `<div><strong>DOB:</strong> ${dob1}</div>` : ''}
             ${dod1 ? `<div><strong>DOD:</strong> ${dod1}</div>` : ''}
-            ${partner ? `<div class="spouse-badge">❤️ Spouse / Partner: ${partner} ${dob2 ? '(DOB: '+dob2+')' : ''} ${dod2 ? '[DOD: '+dod2+']' : ''}</div>` : ''}
+            ${partner ? `<div class="spouse-badge">❤️ Spouse / Partner: ${partner}${partnerStr}</div>` : ''}
           </div>
         </div>
       `;
@@ -247,12 +254,16 @@
       let childrenHTML = "";
       children.forEach(child => {
         const childName = getVal(child, ["NAME"]);
+        const childDob = formatDate(getVal(child, ["DOB"]));
+        const childDod = formatDate(getVal(child, ["DOD"]));
         const childPartner = getVal(child, ["PARTNER NAME", "PARTNER NAME ", "PARTNER", "SPOUSE"]);
         const grandChildren = getChildrenOf(childName);
 
         childrenHTML += `
           <div class="child-card" onclick='handleChildClick("${childName.replace(/'/g, "\\'")}")'>
             <div class="child-name">${childName}</div>
+            ${childDob ? `<div class="child-sub"><strong>DOB:</strong> ${childDob}</div>` : ''}
+            ${childDod ? `<div class="child-sub"><strong>DOD:</strong> ${childDod}</div>` : ''}
             ${childPartner ? `<div class="child-sub">Spouse: ${childPartner}</div>` : ''}
             <div class="child-sub" style="color: #1f4e78; font-weight: 600; margin-top:8px;">
               ${grandChildren.length > 0 ? `${grandChildren.length} Children ➡️` : 'View Details ➡️'}
