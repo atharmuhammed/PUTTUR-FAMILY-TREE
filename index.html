@@ -32,36 +32,56 @@
     .error { color: #e74c3c; font-size: 14px; display: none; margin-top: 5px; }
 
     /* Main Container */
-    #app { display: none; padding: 25px; max-width: 1100px; margin: 0 auto; }
+    #app { display: none; padding: 25px; max-width: 900px; margin: 0 auto; }
     h1 { text-align: center; color: #1f4e78; margin-bottom: 5px; }
-    p.subtitle { text-align: center; color: #666; margin-bottom: 25px; }
+    p.subtitle { text-align: center; color: #666; margin-bottom: 20px; }
 
-    /* Generation Levels Filter */
-    .level-section { margin-bottom: 25px; background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-    .level-title { font-weight: bold; color: #1f4e78; margin-bottom: 10px; border-bottom: 2px solid #eef2f5; padding-bottom: 5px; }
-
-    .tree-container { display: flex; flex-wrap: wrap; gap: 10px; }
-
-    .person-card {
-      background: #f8fafc; padding: 10px 18px; border-radius: 6px;
-      border: 1.5px solid #1f4e78; cursor: pointer; transition: all 0.2s ease;
-      font-weight: 600; color: #1f4e78; font-size: 14px;
+    /* Navigation Controls */
+    .nav-bar { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; }
+    .nav-btn {
+      background: #1f4e78; color: white; border: none; padding: 8px 16px;
+      border-radius: 5px; cursor: pointer; font-weight: 600; font-size: 14px;
+      transition: background 0.2s;
     }
-    .person-card:hover { background: #1f4e78; color: white; transform: translateY(-2px); }
+    .nav-btn:hover { background: #2d5b84; }
+    .nav-btn:disabled { background: #ccc; cursor: not-allowed; }
 
-    /* Details Panel */
-    .details-panel {
-      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-      width: 90%; max-width: 700px; background: white; padding: 25px; border-radius: 12px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.2); display: none; border-top: 5px solid #1f4e78;
-      z-index: 500;
+    /* Main Parent/Head Card */
+    .parent-card {
+      background: #1f4e78; color: white; border-radius: 10px;
+      padding: 25px; margin-bottom: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      text-align: center;
     }
-    .close-btn { position: absolute; top: 15px; right: 20px; cursor: pointer; font-size: 20px; font-weight: bold; color: #888; }
-    .close-btn:hover { color: #000; }
+    .parent-card h2 { margin: 0 0 10px 0; font-size: 26px; border-bottom: 1px solid rgba(255,255,255,0.3); padding-bottom: 8px; }
+    .parent-details { font-size: 16px; line-height: 1.6; }
+    .spouse-badge {
+      display: inline-block; background: #2d5b84; padding: 4px 12px;
+      border-radius: 15px; margin-top: 8px; font-weight: bold;
+    }
 
-    .details-panel h2 { margin-top: 0; color: #1f4e78; font-size: 22px; }
-    .detail-row { margin: 8px 0; font-size: 15px; }
-    .detail-label { font-weight: bold; color: #444; }
+    /* Children Section */
+    .section-header {
+      font-size: 18px; font-weight: bold; color: #1f4e78; margin-bottom: 15px;
+      border-bottom: 2px solid #eef2f5; padding-bottom: 5px;
+    }
+
+    .children-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 15px;
+    }
+
+    .child-card {
+      background: white; border: 2px solid #1f4e78; border-radius: 8px;
+      padding: 15px; text-align: center; cursor: pointer; transition: all 0.2s ease;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .child-card:hover {
+      background: #eef5fc; transform: translateY(-3px); box-shadow: 0 5px 12px rgba(0,0,0,0.1);
+    }
+    .child-name { font-weight: bold; color: #1f4e78; font-size: 16px; }
+    .child-sub { font-size: 12px; color: #666; margin-top: 5px; }
+
+    .no-children { color: #777; font-style: italic; text-align: center; padding: 20px; }
   </style>
 </head>
 <body>
@@ -80,30 +100,31 @@
   <!-- Main Website -->
   <div id="app">
     <h1>Family Tree</h1>
-    <p class="subtitle">Click on any person's name to view details</p>
+    <p class="subtitle">Click on any child's card to explore their family line</p>
 
-    <div id="tree-root"></div>
-
-    <!-- Details Box -->
-    <div id="details-panel" class="details-panel">
-      <span class="close-btn" onclick="closeDetails()">&times;</span>
-      <h2 id="detail-name"></h2>
-      <div id="detail-dob1"></div>
-      <div id="detail-dod1"></div>
-      <div id="detail-partner"></div>
-      <div id="detail-dob2"></div>
-      <div id="detail-dod2"></div>
-      <div id="detail-parent"></div>
-      <div id="detail-children"></div>
+    <div class="nav-bar">
+      <button class="nav-btn" id="home-btn" onclick="goHome()">🏠 Home (Mohammed Ali)</button>
+      <button class="nav-btn" id="back-btn" onclick="goBack()" disabled>⬅️ Back</button>
     </div>
+
+    <!-- Active Head / Parent Display -->
+    <div id="parent-container"></div>
+
+    <!-- Children List -->
+    <div class="section-header" id="children-title">Children</div>
+    <div id="children-container" class="children-grid"></div>
   </div>
 
   <script>
     // EDIT YOUR WEBSITE PASSWORD HERE
-    const SET_PASSWORD = "Puttur2026";
+    const SET_PASSWORD = "familysecret";
 
     // EXCEL FILE NAME
     const EXCEL_FILENAME = "ABDUL KHADER FAMILY.xlsx";
+
+    let familyData = [];
+    let historyStack = []; // Stores viewing history for back button
+    let currentPerson = null;
 
     function checkPassword() {
       const input = document.getElementById("password-input").value;
@@ -120,8 +141,6 @@
       if (e.key === "Enter") checkPassword();
     });
 
-    let familyData = [];
-
     function autoLoadExcel() {
       fetch(encodeURIComponent(EXCEL_FILENAME))
         .then(res => res.arrayBuffer())
@@ -130,108 +149,128 @@
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
           familyData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-          renderTree();
+
+          // Find Level 1 person (e.g. MOHAMMED ALI)
+          let root = familyData.find(p => p["LEVEL"] == 1 || p["LEVEL"] == "1");
+          if (!root && familyData.length > 0) root = familyData[0];
+
+          if (root) {
+            selectPerson(root, false);
+          }
         })
         .catch(err => {
-          console.error("Error reading Excel file:", err);
-          alert("Could not load " + EXCEL_FILENAME + ". Make sure the filename matches exactly.");
+          console.error("Error loading Excel file:", err);
+          alert("Could not load " + EXCEL_FILENAME + ". Check filename on GitHub.");
         });
     }
 
     function formatDate(val) {
       if (!val) return "";
       let str = val.toString().trim();
-      if (str.includes("T")) {
-        str = str.split("T")[0];
-      }
-      if (str.includes("00:00:00")) {
-        str = str.replace(" 00:00:00", "");
-      }
+      if (str.includes("T")) str = str.split("T")[0];
+      if (str.includes("00:00:00")) str = str.replace(" 00:00:00", "");
       return str;
     }
 
-    function renderTree() {
-      const rootContainer = document.getElementById("tree-root");
-      rootContainer.innerHTML = "";
+    function selectPerson(person, isNavigatingHistory = false) {
+      if (!isNavigatingHistory && currentPerson) {
+        historyStack.push(currentPerson);
+      }
 
-      const levels = {};
-      familyData.forEach(person => {
-        const name = person["NAME"] ? person["NAME"].toString().trim() : "";
-        if (!name) return;
+      currentPerson = person;
+      updateNavButtons();
+      renderCurrentView();
+    }
 
-        const lvl = person["LEVEL"] ? person["LEVEL"].toString().trim() : "Other";
-        if (!levels[lvl]) levels[lvl] = [];
-        levels[lvl].push(person);
+    function goBack() {
+      if (historyStack.length > 0) {
+        const prev = historyStack.pop();
+        selectPerson(prev, true);
+      }
+    }
+
+    function goHome() {
+      historyStack = [];
+      let root = familyData.find(p => p["LEVEL"] == 1 || p["LEVEL"] == "1");
+      if (!root && familyData.length > 0) root = familyData[0];
+      if (root) selectPerson(root, true);
+    }
+
+    function updateNavButtons() {
+      document.getElementById("back-btn").disabled = historyStack.length === 0;
+    }
+
+    function renderCurrentView() {
+      if (!currentPerson) return;
+
+      const name = currentPerson["NAME"] ? currentPerson["NAME"].toString().trim() : "";
+      const dob1 = formatDate(currentPerson["DOB 1"]);
+      const dod1 = formatDate(currentPerson["DOD 1"]);
+      const partner = currentPerson["PARTNER NAME"] ? currentPerson["PARTNER NAME"].toString().trim() : "";
+      const dob2 = formatDate(currentPerson["DOB 2"]);
+      const dod2 = formatDate(currentPerson["DOD 2"]);
+      const parent = currentPerson["PARENT NAME"] ? currentPerson["PARENT NAME"].toString().trim() : "";
+
+      // 1. Render Top Parent Card
+      let parentHTML = `
+        <div class="parent-card">
+          <h2>${name}</h2>
+          <div class="parent-details">
+            ${dob1 ? `<div><strong>Date of Birth:</strong> ${dob1}</div>` : ''}
+            ${dod1 ? `<div><strong>Date of Death:</strong> ${dod1}</div>` : ''}
+            ${parent ? `<div><strong>Parent:</strong> ${parent}</div>` : ''}
+            ${partner ? `<div class="spouse-badge">❤️ Spouse: ${partner} ${dob2 ? '('+dob2+')' : ''}</div>` : ''}
+          </div>
+        </div>
+      `;
+      document.getElementById("parent-container").innerHTML = parentHTML;
+
+      // 2. Find Children
+      const children = familyData.filter(item => {
+        const pName = item["PARENT NAME"] ? item["PARENT NAME"].toString().trim().toUpperCase() : "";
+        return pName === name.toUpperCase();
       });
 
-      Object.keys(levels).sort((a,b) => parseFloat(a) - parseFloat(b)).forEach(lvl => {
-        const section = document.createElement("div");
-        section.className = "level-section";
+      // 3. Render Children Cards Below
+      const childrenContainer = document.getElementById("children-container");
+      document.getElementById("children-title").innerText = `Children of ${name} (${children.length})`;
 
-        const title = document.createElement("div");
-        title.className = "level-title";
-        title.innerText = "Generation / Level " + lvl;
-        section.appendChild(title);
+      if (children.length === 0) {
+        childrenContainer.innerHTML = `<div class="no-children">No children listed for ${name}</div>`;
+        return;
+      }
 
-        const container = document.createElement("div");
-        container.className = "tree-container";
-
-        levels[lvl].forEach(person => {
-          const card = document.createElement("div");
-          card.className = "person-card";
-          card.innerText = person["NAME"].toString().trim();
-          card.onclick = () => showDetails(person);
-          container.appendChild(card);
+      let childrenHTML = "";
+      children.forEach(child => {
+        const childName = child["NAME"] ? child["NAME"].toString().trim() : "";
+        const childPartner = child["PARTNER NAME"] ? child["PARTNER NAME"].toString().trim() : "";
+        
+        // Count grandchild entries
+        const grandChildren = familyData.filter(item => {
+          const pName = item["PARENT NAME"] ? item["PARENT NAME"].toString().trim().toUpperCase() : "";
+          return pName === childName.toUpperCase();
         });
 
-        section.appendChild(container);
-        rootContainer.appendChild(section);
+        childrenHTML += `
+          <div class="child-card" onclick='handleChildClick("${childName.replace(/'/g, "\\'")}")'>
+            <div class="child-name">${childName}</div>
+            ${childPartner ? `<div class="child-sub">Spouse: ${childPartner}</div>` : ''}
+            <div class="child-sub" style="color: #1f4e78; font-weight: 600; margin-top:6px;">
+              ${grandChildren.length} Children ➡️
+            </div>
+          </div>
+        `;
       });
+
+      childrenContainer.innerHTML = childrenHTML;
     }
 
-    function showDetails(person) {
-      const name = person["NAME"] ? person["NAME"].toString().trim() : "";
-      const dob1 = formatDate(person["DOB 1"]);
-      const dod1 = formatDate(person["DOD 1"]);
-
-      const partner = person["PARTNER NAME"] ? person["PARTNER NAME"].toString().trim() : "";
-      const dob2 = formatDate(person["DOB 2"]);
-      const dod2 = formatDate(person["DOD 2"]);
-
-      const parent = person["PARENT NAME"] ? person["PARENT NAME"].toString().trim() : "";
-
-      document.getElementById("detail-name").innerText = name;
-
-      document.getElementById("detail-dob1").innerHTML = dob1 
-        ? `<div class="detail-row"><span class="detail-label">Date of Birth:</span> ${dob1}</div>` : "";
-
-      document.getElementById("detail-dod1").innerHTML = dod1 
-        ? `<div class="detail-row"><span class="detail-label">Date of Death:</span> ${dod1}</div>` : "";
-
-      document.getElementById("detail-partner").innerHTML = partner 
-        ? `<div class="detail-row"><span class="detail-label">Wife / Husband:</span> ${partner}</div>` : "";
-
-      document.getElementById("detail-dob2").innerHTML = (partner && dob2) 
-        ? `<div class="detail-row"><span class="detail-label">Partner's Date of Birth:</span> ${dob2}</div>` : "";
-
-      document.getElementById("detail-dod2").innerHTML = (partner && dod2) 
-        ? `<div class="detail-row"><span class="detail-label">Partner's Date of Death:</span> ${dod2}</div>` : "";
-
-      document.getElementById("detail-parent").innerHTML = parent 
-        ? `<div class="detail-row"><span class="detail-label">Parent Name:</span> ${parent}</div>` : "";
-
-      const children = familyData
-        .filter(item => item["PARENT NAME"] && item["PARENT NAME"].toString().trim().toUpperCase() === name.toUpperCase())
-        .map(item => item["NAME"].toString().trim());
-
-      document.getElementById("detail-children").innerHTML = (children.length > 0) 
-        ? `<div class="detail-row"><span class="detail-label">Children:</span> ${children.join(", ")}</div>` : "";
-
-      document.getElementById("details-panel").style.display = "block";
-    }
-
-    function closeDetails() {
-      document.getElementById("details-panel").style.display = "none";
+    function handleChildClick(childName) {
+      const childObj = familyData.find(item => item["NAME"] && item["NAME"].toString().trim().toUpperCase() === childName.toUpperCase());
+      if (childObj) {
+        selectPerson(childObj);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }
   </script>
 </body>
