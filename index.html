@@ -131,45 +131,53 @@
       if (e.key === "Enter") checkPassword();
     });
 
-    function getVal(row, possibleKeys) {
-      if (!row) return "";
-      const rowKeys = Object.keys(row);
-      for (let target of possibleKeys) {
-        let matchedKey = rowKeys.find(k => k.trim().toUpperCase() === target.toUpperCase());
-        if (matchedKey) {
-          let val = row[matchedKey];
-          if (val !== undefined && val !== null) {
-            val = val.toString().trim();
-            if (val !== "" && val !== "NaN" && val !== "undefined" && val !== "NaT") return val;
-          }
-        }
-      }
-      return "";
+    function cleanValue(val) {
+      if (val === undefined || val === null) return "";
+      let str = val.toString().trim();
+      if (str === "" || str === "NaN" || str === "undefined" || str === "NaT") return "";
+      if (str.includes("T")) str = str.split("T")[0];
+      return str.replace(" 00:00:00", "").trim();
     }
 
-    function formatDate(val) {
-      if (!val) return "";
-      if (val.includes("T")) val = val.split("T")[0];
-      val = val.replace(" 00:00:00", "").trim();
-      if (val === "NaT" || val === "NaN" || val === "undefined") return "";
-      return val;
+    function parsePersonRow(arr) {
+      if (!arr || arr.length < 1) return null;
+      return {
+        name: cleanValue(arr[0]),
+        dob: cleanValue(arr[1]),
+        dod: cleanValue(arr[2]),
+        partner: cleanValue(arr[3]),
+        partnerDob: cleanValue(arr[4]),
+        partnerDod: cleanValue(arr[5]),
+        parent: cleanValue(arr[6]),
+        level: cleanValue(arr[7])
+      };
     }
 
     function normName(str) {
-      return str.trim().toUpperCase().replace(/\s+/g, " ");
+      return (str || "").trim().toUpperCase().replace(/\s+/g, " ");
     }
 
     function loadGoogleSheetData() {
       Papa.parse(GOOGLE_SHEET_CSV_URL, {
         download: true,
-        header: true,
+        header: false, // Array based parsing to avoid column header name conflicts
         complete: function(results) {
-          familyData = results.data.filter(item => getVal(item, ["NAME"]) !== "");
+          const rows = results.data;
+          if (rows.length === 0) return;
 
-          let root = familyData.find(p => {
-            let lvl = getVal(p, ["LEVEL"]);
-            return lvl === "1" || lvl === "1.0";
-          });
+          // Skip header row if first cell is NAME
+          let startIndex = 0;
+          if (rows[0] && rows[0][0] && rows[0][0].toUpperCase().includes("NAME")) {
+            startIndex = 1;
+          }
+
+          familyData = [];
+          for (let i = startIndex; i < rows.length; i++) {
+            let p = parsePersonRow(rows[i]);
+            if (p && p.name) familyData.push(p);
+          }
+
+          let root = familyData.find(p => p.level === "1" || p.level === "1.0");
           if (!root && familyData.length > 0) root = familyData[0];
 
           if (root) selectPerson(root, false);
@@ -197,10 +205,7 @@
 
     function goHome() {
       historyStack = [];
-      let root = familyData.find(p => {
-        let lvl = getVal(p, ["LEVEL"]);
-        return lvl === "1" || lvl === "1.0";
-      });
+      let root = familyData.find(p => p.level === "1" || p.level === "1.0");
       if (!root && familyData.length > 0) root = familyData[0];
       if (root) selectPerson(root, true);
     }
@@ -208,8 +213,8 @@
     function getChildrenOf(personName) {
       const target = normName(personName);
       return familyData.filter(item => {
-        const name = normName(getVal(item, ["NAME"]));
-        const parent = normName(getVal(item, ["PARENT NAME", "PARENT"]));
+        const name = normName(item.name);
+        const parent = normName(item.parent);
         const isMatch = (parent === target) || (target.length > 3 && (parent.startsWith(target) || target.startsWith(parent)));
         return isMatch && name !== target;
       });
@@ -218,59 +223,55 @@
     function renderCurrentView() {
       if (!currentPerson) return;
 
-      const name = getVal(currentPerson, ["NAME"]);
-      const dob1 = formatDate(getVal(currentPerson, ["DOB"]));
-      const dod1 = formatDate(getVal(currentPerson, ["DOD"]));
-      const partner = getVal(currentPerson, ["PARTNER NAME", "PARTNER NAME ", "PARTNER", "SPOUSE"]);
-      const dob2 = formatDate(getVal(currentPerson, ["DOB.1", "DOB 2", "PARTNER DOB", "SPOUSE DOB"]));
-      const dod2 = formatDate(getVal(currentPerson, ["DOD.1", "DOD 2", "PARTNER DOD", "SPOUSE DOD"]));
-
-      let partnerDetails = [];
-      if (dob2) partnerDetails.push(`DOB: ${dob2}`);
-      if (dod2) partnerDetails.push(`DOD: ${dod2}`);
-      let partnerStr = partnerDetails.length > 0 ? ` (${partnerDetails.join(' | ')})` : '';
+      const p = currentPerson;
+      let spouseInfo = "";
+      if (p.partner) {
+        let spouseDates = [];
+        if (p.partnerDob) spouseDates.push(`DOB: ${p.partnerDob}`);
+        if (p.partnerDod) spouseDates.push(`DOD: ${p.partnerDod}`);
+        let spouseDateStr = spouseDates.length > 0 ? ` (${spouseDates.join(' | ')})` : '';
+        spouseInfo = `<div class="spouse-badge">❤️ Spouse / Partner: ${p.partner}${spouseDateStr}</div>`;
+      }
 
       document.getElementById("parent-container").innerHTML = `
         <div class="parent-card">
-          <h2>${name}</h2>
+          <h2>${p.name}</h2>
           <div class="parent-details">
-            ${dob1 ? `<div><strong>DOB:</strong> ${dob1}</div>` : ''}
-            ${dod1 ? `<div><strong>DOD:</strong> ${dod1}</div>` : ''}
-            ${partner ? `<div class="spouse-badge">❤️ Spouse / Partner: ${partner}${partnerStr}</div>` : ''}
+            ${p.dob ? `<div><strong>DOB:</strong> ${p.dob}</div>` : ''}
+            ${p.dod ? `<div><strong>DOD:</strong> ${p.dod}</div>` : ''}
+            ${spouseInfo}
           </div>
         </div>
       `;
 
-      const children = getChildrenOf(name);
+      const children = getChildrenOf(p.name);
       const childrenContainer = document.getElementById("children-container");
-      document.getElementById("children-title").innerText = `Children of ${name} (${children.length})`;
+      document.getElementById("children-title").innerText = `Children of ${p.name} (${children.length})`;
 
       if (children.length === 0) {
-        childrenContainer.innerHTML = `<div class="no-children">No children listed for ${name}</div>`;
+        childrenContainer.innerHTML = `<div class="no-children">No children listed for ${p.name}</div>`;
         return;
       }
 
       let childrenHTML = "";
       children.forEach(child => {
-        const childName = getVal(child, ["NAME"]);
-        const childDob = formatDate(getVal(child, ["DOB"]));
-        const childDod = formatDate(getVal(child, ["DOD"]));
-        const childPartner = getVal(child, ["PARTNER NAME", "PARTNER NAME ", "PARTNER", "SPOUSE"]);
-        const childPartnerDob = formatDate(getVal(child, ["DOB.1", "DOB 2", "PARTNER DOB", "SPOUSE DOB"]));
-        const childPartnerDod = formatDate(getVal(child, ["DOD.1", "DOD 2", "PARTNER DOD", "SPOUSE DOD"]));
-        const grandChildren = getChildrenOf(childName);
+        const grandChildren = getChildrenOf(child.name);
 
-        let cPartnerDetails = [];
-        if (childPartnerDob) cPartnerDetails.push(`DOB: ${childPartnerDob}`);
-        if (childPartnerDod) cPartnerDetails.push(`DOD: ${childPartnerDod}`);
-        let cPartnerStr = cPartnerDetails.length > 0 ? ` (${cPartnerDetails.join(' | ')})` : '';
+        let childSpouseInfo = "";
+        if (child.partner) {
+          let childSpouseDates = [];
+          if (child.partnerDob) childSpouseDates.push(`DOB: ${child.partnerDob}`);
+          if (child.partnerDod) childSpouseDates.push(`DOD: ${child.partnerDod}`);
+          let childSpouseStr = childSpouseDates.length > 0 ? ` (${childSpouseDates.join(' | ')})` : '';
+          childSpouseInfo = `<div class="child-sub">Spouse: ${child.partner}${childSpouseStr}</div>`;
+        }
 
         childrenHTML += `
-          <div class="child-card" onclick='handleChildClick("${childName.replace(/'/g, "\\'")}")'>
-            <div class="child-name">${childName}</div>
-            ${childDob ? `<div class="child-sub"><strong>DOB:</strong> ${childDob}</div>` : ''}
-            ${childDod ? `<div class="child-sub"><strong>DOD:</strong> ${childDod}</div>` : ''}
-            ${childPartner ? `<div class="child-sub">Spouse: ${childPartner}${cPartnerStr}</div>` : ''}
+          <div class="child-card" onclick='handleChildClick("${child.name.replace(/'/g, "\\'")}")'>
+            <div class="child-name">${child.name}</div>
+            ${child.dob ? `<div class="child-sub"><strong>DOB:</strong> ${child.dob}</div>` : ''}
+            ${child.dod ? `<div class="child-sub"><strong>DOD:</strong> ${child.dod}</div>` : ''}
+            ${childSpouseInfo}
             <div class="child-sub" style="color: #1f4e78; font-weight: 600; margin-top:8px;">
               ${grandChildren.length > 0 ? `${grandChildren.length} Children ➡️` : 'View Details ➡️'}
             </div>
@@ -283,7 +284,7 @@
 
     function handleChildClick(childName) {
       const normTarget = normName(childName);
-      const childObj = familyData.find(item => normName(getVal(item, ["NAME"])) === normTarget);
+      const childObj = familyData.find(item => normName(item.name) === normTarget);
       if (childObj) {
         selectPerson(childObj);
         window.scrollTo({ top: 0, behavior: 'smooth' });
